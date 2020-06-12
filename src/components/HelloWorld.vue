@@ -11,7 +11,7 @@
 
 <script>
 
-import { menuEventBus } from '../main'
+import { menuEventBus, projectDataBus } from '../main'
 
 import MainMenu from './Menu'
 import Mess from './MessMaker'
@@ -51,6 +51,7 @@ export default {
         let messName = prompt('Please enter your website project name.', 'My Website')
         if (messName != null) {
           localStorage.name = messName
+          projectDataBus.name = messName
           this.status = 'dirty'
         }
       } else { // false means just show the mess

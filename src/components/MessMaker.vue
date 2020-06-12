@@ -40,6 +40,7 @@ export default {
     makeAMess (bool) {
       if (bool === 'true') {
         var theMess = this.$data
+        // this.name = theMess.name === '' && localStorage.name === '' ? projectDataBus.name : theMess.name
         if (typeof theMess.header === 'string') this.updateHeader(theMess.header)
         if (typeof theMess.main === 'string') this.updateMain(theMess.main)
         if (typeof theMess.footer === 'string') this.updateFooter(theMess.footer)
@@ -82,7 +83,7 @@ export default {
           break
       }
       let theMess = JSON.stringify(this.$data)
-      localStorage.mess = this.hashMess(theMess)
+      this.mess = this.hashMess(theMess)
     },
 
     updateHeader (newHeader) {
@@ -166,7 +167,7 @@ export default {
       this.js = localStorage.js || this.js
       this.css = localStorage.css || this.css
       this.mess = localStorage.mess || this.mess
-    } 
+    }
     if (projectDataBus.name === '' && localStorage.getItem('name') !== null) this.makeAMess('true')
   },
   watch: {

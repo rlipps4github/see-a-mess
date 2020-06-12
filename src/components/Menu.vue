@@ -16,7 +16,10 @@
       <template v-if="currentMenu === 'import'">
         <li><import-form></import-form></li>
       </template>
-      <li @click="menuClick('Cancel')">Cancel</li>
+      <template v-if="currentMenu !== 'home'">
+        <li @click="menuClick('Back')">Back</li>
+      </template>
+        <li @click="menuClick('Cancel')">Close</li>
     </ul>
   </div>
 </template>
@@ -84,9 +87,6 @@ export default {
         case 'Save':
           this.exportFile()
           break
-        case 'Cancel':
-          this.closeMenu()
-          break
         case 'Add Primative':
           this.addPrimatives()
           break
@@ -102,8 +102,15 @@ export default {
         case 'Add DIV':
           this.addDiv('content')
           break
+        case 'Back':
+          if (this.currentMenu === 'primative') this.setMenu('add')
+          else this.setMenu('home')
+          break
+        case 'Cancel':
+          this.closeMenu()
+          break
         default:
-          return false
+          this.closeMenu()
       }
     },
 

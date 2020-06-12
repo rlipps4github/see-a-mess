@@ -10,13 +10,12 @@ export const menuEventBus = new Vue()
 export const projectDataBus = new Vue({
   data: {
     name: '',
-    page_location: '',
-    html_location: {},
-    header: {},
-    main: {},
-    footer: {},
+    header: '',
+    main: '',
+    footer: '',
     js: '',
-    css: ''
+    css: '',
+    mess: ''
   }
 })
 
