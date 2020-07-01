@@ -16,29 +16,34 @@
       <template v-if="currentMenu === 'import'">
         <li><import-form></import-form></li>
       </template>
+      <template v-if="currentMenu === 'import-image'">
+        <li><import-image></import-image></li>
+      </template>
       <template v-if="currentMenu !== 'home'">
         <li @click="menuClick('Back')">Back</li>
       </template>
-        <li @click="menuClick('Cancel')">Close</li>
+        <li @click="menuClick('Close')">Close</li>
     </ul>
   </div>
 </template>
 
 <script>
 
-import { menuEventBus } from '../main'
+import { menuEventBus, projectDataBus } from '../main'
 
 import ImportForm from './Import'
+import ImportImage from './ImportImg'
 
 export default {
   name: 'ModalMenu',
   data () {
     return {
       currentMenu: 'file',
+      currentPrimitive: null,
       homeList: [
         'File',
-        'Add',
         'Edit',
+        'Add',
         'Remove'
       ],
       fileList: [
@@ -49,7 +54,7 @@ export default {
       moduleList: [
         'Add Row',
         'Add Column',
-        'Add Logo',
+        'Add Image',
         'Add Menu',
         'Add Contact',
         'Add Primative'
@@ -87,26 +92,39 @@ export default {
         case 'Save':
           this.exportFile()
           break
-        case 'Add Primative':
-          this.addPrimatives()
-          break
-        case 'Remove':
-          this.removeSelection()
-          break
         case 'Add Row':
           this.addDiv('row')
           break
         case 'Add Column':
           this.addDiv('column')
           break
+        case 'Add Image':
+          this.setMenu('import-image')
+          break
+        case 'Add Primative':
+          this.setMenu('primative')
+          break
         case 'Add DIV':
           this.addDiv('content')
+          break
+        case 'Add H1':
+        case 'Add H2':
+        case 'Add H3':
+        case 'Add H4':
+        case 'Add H5':
+        case 'Add H6':
+        case 'Add Paragraph':
+          this.currentPrimitive = menuItem.replace('Add ', '').replace(/[^a-z]/g, '')
+          this.setMenu('element-panel')
+          break
+        case 'Remove':
+          this.removeSelection()
           break
         case 'Back':
           if (this.currentMenu === 'primative') this.setMenu('add')
           else this.setMenu('home')
           break
-        case 'Cancel':
+        case 'Close':
           this.closeMenu()
           break
         default:
@@ -116,39 +134,32 @@ export default {
 
     createData () {
       // load initial setup if no data is saved
-      if (localStorage.getItem('name') === null) {
-        menuEventBus.$emit('mess-made', 'true')
+      if (projectDataBus.name === null) {
+        menuEventBus.$emit('new-mess')
         this.closeMenu()
       } else {
         var startOver = confirm('All data will be erased!\n Are you sure you want to start over?')
         if (startOver) {
-          menuEventBus.$emit('clean-mess', true)
-          menuEventBus.$emit('mess-made', 'true')
-          this.closeMenu()
+          menuEventBus.$emit('clean-mess-maker')
         }
       }
     },
 
     exportFile () {
-      let theMess = JSON.parse(localStorage.getItem('mess')) || false
-      if (theMess) console.save(theMess, [localStorage.name + '.txt'])
+      menuEventBus.$emit('export-mess')
       this.closeMenu()
     },
 
     closeMenu () {
-      menuEventBus.$emit('menu-closed', true)
+      menuEventBus.$emit('close-menu')
     },
 
     initMenu () {
-      if (localStorage.name !== undefined && this.currentMenu === 'file') this.currentMenu = 'home'
+      if (projectDataBus.name !== null && this.currentMenu === 'file') this.currentMenu = 'home'
     },
 
     setMenu (menuSelection) {
       if (menuSelection !== '') this.currentMenu = menuSelection
-    },
-
-    addPrimatives () {
-      this.currentMenu = 'primative'
     },
 
     removeSelection () {
@@ -159,13 +170,19 @@ export default {
     addDiv (divClass) {
       menuEventBus.$emit('add-div', divClass)
       this.closeMenu()
+    },
+
+    addImage () {
+      // import image
     }
   },
   components: {
-    ImportForm
+    ImportForm,
+    ImportImage
   },
   created () {
     this.initMenu()
+    menuEventBus.$on('add-image', () => this.closeMenu())
   }
 }
 
@@ -177,9 +194,9 @@ export default {
   @for $i from 1 through 20 {
     &:nth-child(#{$i}) {
       font-size: 2+random(2)+vmin;
-      transform: translate( random(7)+#{$i}+vw , random(7)+#{$i}+vw );
-      animation: shuffle 5s infinite;
-      transition: transform random(5)+#{$i}+s;
+      // transform: translate( random(2)+#{$i}+vw , random(2)+#{$i}+vw );
+      // animation: shuffle 5s infinite;
+      // transition: transform random(5)+#{$i}+s;
     }
   }
 }
@@ -225,6 +242,28 @@ export default {
       text-shadow: 0 0 10px #41B883;
       animation-play-state: paused;
       z-index: 10;
+    }
+  }
+
+  >>> form {
+    padding: 10px;
+    margin: 0 0 20px;
+    background: rgba(255,255,255,0.25);
+    font-size: 16px;
+
+    input {
+      padding: 5px;
+      border: 1px solid;
+      border-radius: 5px;
+      margin: 0 0 10px;
+      background: rgba(255,255,255,0.25);
+    }
+
+    button {
+      padding: 5px 15px;
+      border-radius: 5px;
+      font-weight: bold;
+      text-transform: uppercase;
     }
   }
 }
