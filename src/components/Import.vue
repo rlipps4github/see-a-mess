@@ -1,7 +1,8 @@
 <template>
-  <form class="import-form">
-    <input type="file" @change="onFileChange" />
-    <button type="button" @click="submitFileList">Import</button>
+  <form>
+    <input type="file" @change="onFileChange" accept=".mess" />
+    <br />
+    <button type="button" @click="submitFileList" :disabled="messFileList === null">Import</button>
   </form>
 </template>
 
@@ -12,7 +13,13 @@ export default {
   name: 'ImportForm',
   data () {
     return {
-      messFileList: null
+      messFileList: null,
+      projectName: null,
+      projectHeader: null,
+      projectMain: null,
+      projectFooter: null,
+      projectJs: null,
+      projectCss: null
     }
   },
   methods: {
@@ -59,30 +66,46 @@ export default {
         try {
           file.onload = () => {
             let theMess = JSON.parse(vm.dehashMess(file.result))
-            localStorage.name = theMess.name
-            localStorage.header = theMess.header
-            localStorage.main = theMess.main
-            localStorage.footer = theMess.footer
-            localStorage.js = theMess.js
-            localStorage.css = theMess.css
-            localStorage.mess = theMess.mess
-            projectDataBus.name = theMess.name
-            projectDataBus.header = theMess.header
-            projectDataBus.main = theMess.main
-            projectDataBus.footer = theMess.footer
-            projectDataBus.js = theMess.js
-            projectDataBus.css = theMess.css
-            projectDataBus.mess = theMess.mess
-            menuEventBus.$emit('import-mess')
-            menuEventBus.$emit('menu-closed')
+            vm.projectName = theMess.name
+            vm.projectHeader = theMess.header
+            vm.projectMain = theMess.main
+            vm.projectFooter = theMess.footer
+            vm.projectJs = theMess.js
+            vm.projectCss = theMess.css
+          }
+          file.onloadend = () => {
+            menuEventBus.$emit('set-mess-db')
+            menuEventBus.$emit('refresh-mess-maker', 'import')
+            menuEventBus.$emit('close-menu')
+            menuEventBus.$emit('show-mess')
           }
           file.readAsText(files[0])
         } catch (error) {
-          alert('Import failed \r\n' + error)
+          alert('mess import failed \r\n' + error)
         }
       }
     }
-
+  },
+  watch: {
+    projectName (newProjectName) {
+      projectDataBus.name = newProjectName
+    },
+    projectHeader (newProjectHeader) {
+      projectDataBus.header = newProjectHeader
+    },
+    projectMain (newProjectMain) {
+      projectDataBus.main = newProjectMain
+    },
+    projectFooter (newProjectFooter) {
+      projectDataBus.footer = newProjectFooter
+    },
+    projectJs (newProjectJs) {
+      projectDataBus.js = newProjectJs
+    },
+    projectCss (newProjectCss) {
+      projectDataBus.css = newProjectCss
+    }
   }
 }
+
 </script>

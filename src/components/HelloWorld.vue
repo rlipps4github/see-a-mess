@@ -25,15 +25,19 @@ export default {
       showMenu: false
     }
   },
+  components: {
+    MainMenu,
+    Mess
+  },
   methods: {
 
-    contextMenu () {
-      var vm = this
+    initMe () {
+      let vm = this
       window.oncontextmenu = () => {
         vm.showCustomMenu(event)
         return false
       }
-      this.status = localStorage.getItem('name') == null ? 'clean' : 'dirty'
+      this.status = projectDataBus.name === null ? 'clean' : 'dirty'
     },
 
     showCustomMenu (event) {
@@ -46,34 +50,25 @@ export default {
       this.showMenu = false
     },
 
-    prepMess (bool) {
-      if (bool === 'true') { // true means new mess
-        let messName = prompt('Please enter your website project name.', 'My Website')
-        if (messName != null) {
-          localStorage.name = messName
-          projectDataBus.name = messName
-          this.status = 'dirty'
-        }
-      } else { // false means just show the mess
-        this.status = 'clean'
+    makeNewMess () {
+      let messName = prompt('Please enter your website project name.', 'My Website')
+      if (messName != null) {
+        projectDataBus.name = messName
+        menuEventBus.$emit('start-mess-db')
         this.status = 'dirty'
       }
+    },
+
+    showSavedMess () {
+      this.status = 'dirty'
     }
   },
-  components: {
-
-    MainMenu,
-    Mess
-
-  },
   created () {
-    this.contextMenu()
     menuEventBus
-      .$on('menu-opened', () => this.showCustomMenu())
-      .$on('menu-closed', () => this.closeCustomMenu())
-      .$on('mess-made', (bool) => this.prepMess(bool))
-      .$on('import-mess', (bool) => this.prepMess(bool))
-      .$emit('update-menu', true)
+      .$on('close-menu', () => this.closeCustomMenu())
+      .$on('show-mess', () => this.showSavedMess())
+      .$on('new-mess', () => this.makeNewMess())
+      .$on('init-app', () => this.initMe())
   },
   destroyed () {
     window.oncontextmenu = () => { return true }
@@ -113,7 +108,7 @@ export default {
 .unstyled {
   padding: 1em;
   border: 1px dotted lightcoral;
-  box-shadow: 0 0 10em rgba(0,0,0,0.1);
+  box-shadow: 0 0 5em rgba(0,0,0,0.1);
 
   &::before {
     content: attr(class);
@@ -133,6 +128,11 @@ export default {
     color: red;
   }
 
+  &.page {
+    height: 100%;
+    overflow: hidden;
+  }
+
   &.row {
     width: 100%;
     height: 100%;
@@ -144,6 +144,20 @@ export default {
       display: flex;
       flex-direction: column;
     }
+  }
+
+  &.content {
+    position: relative;
+    overflow: hidden;
+  }
+
+  img {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
   }
 }
 
