@@ -12,27 +12,37 @@
       </template>
       <template v-if="currentMenu === 'primative'">
         <li v-for="(item,index) in primativeList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
+        <li v-for="(item,index) in textList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
+      </template>
+      <template v-if="currentMenu === 'text'">
+        <li v-for="(item,index) in textList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
       </template>
       <template v-if="currentMenu === 'import'">
-        <li><import-form></import-form></li>
+        <li><import-file></import-file></li>
       </template>
       <template v-if="currentMenu === 'import-image'">
         <li><import-image></import-image></li>
       </template>
-      <template v-if="currentMenu !== 'home'">
+      <template v-if="currentMenu === 'edit'">
+        <li><edit></edit></li>
+      </template>
+      <template v-if="currentMenu !== 'home' && currentMenu !== 'edit'">
         <li @click="menuClick('Back')">Back</li>
       </template>
+      <template v-if="currentMenu !== 'edit'">
         <li @click="menuClick('Close')">Close</li>
+      </template>
     </ul>
   </div>
 </template>
 
 <script>
 
-import { menuEventBus, projectDataBus } from '../main'
+import { menuEventBus } from '../main.js'
 
-import ImportForm from './Import'
-import ImportImage from './ImportImg'
+import ImportFile from './Import.vue'
+import ImportImage from './ImportImg.vue'
+import Edit from './EditElement.vue'
 
 export default {
   name: 'ModalMenu',
@@ -40,6 +50,7 @@ export default {
     return {
       currentMenu: 'file',
       currentPrimitive: null,
+      currentEl: {},
       homeList: [
         'File',
         'Edit',
@@ -54,6 +65,7 @@ export default {
       moduleList: [
         'Add Row',
         'Add Column',
+        'Add Text',
         'Add Image',
         'Add Menu',
         'Add Contact',
@@ -61,13 +73,19 @@ export default {
       ],
       primativeList: [
         'Add DIV',
+        'Add SPAN',
+        'Add Un-ordered List',
+        'Add Ordered List'
+      ],
+      textList: [
         'Add H1',
         'Add H2',
         'Add H3',
         'Add H4',
         'Add H5',
         'Add H6',
-        'Add Paragraph'
+        'Add Paragraph',
+        'Add Link'
       ]
     }
   },
@@ -98,6 +116,9 @@ export default {
         case 'Add Column':
           this.addDiv('column')
           break
+        case 'Add Text':
+          this.setMenu('text')
+          break
         case 'Add Image':
           this.setMenu('import-image')
           break
@@ -114,14 +135,20 @@ export default {
         case 'Add H5':
         case 'Add H6':
         case 'Add Paragraph':
-          this.currentPrimitive = menuItem.replace('Add ', '').replace(/[^a-z]/g, '')
-          this.setMenu('element-panel')
+          this.currentPrimitive = menuItem.replace('Add ', '').replace('aragraph', '')
+          this.addText()
+          this.closeMenu()
+          break
+        case 'Add Link':
+          this.currentPrimitive = 'A'
+          this.addText()
+          this.closeMenu()
           break
         case 'Remove':
           this.removeSelection()
           break
         case 'Back':
-          if (this.currentMenu === 'primative') this.setMenu('add')
+          if (this.currentMenu === 'primative' || this.currentMenu === 'text') this.setMenu('add')
           else this.setMenu('home')
           break
         case 'Close':
@@ -134,7 +161,7 @@ export default {
 
     createData () {
       // load initial setup if no data is saved
-      if (projectDataBus.name === null) {
+      if (this.$store.state.name === null) {
         menuEventBus.$emit('new-mess')
         this.closeMenu()
       } else {
@@ -154,12 +181,13 @@ export default {
       menuEventBus.$emit('close-menu')
     },
 
-    initMenu () {
-      if (projectDataBus.name !== null && this.currentMenu === 'file') this.currentMenu = 'home'
+    initMenu (status) {
+      if (status === 'dirty' && this.currentMenu === 'file') this.currentMenu = 'home'
     },
 
     setMenu (menuSelection) {
       if (menuSelection !== '') this.currentMenu = menuSelection
+      console.log('menu: ' + menuSelection)
     },
 
     removeSelection () {
@@ -172,17 +200,33 @@ export default {
       this.closeMenu()
     },
 
-    addImage () {
-      // import image
+    addText () {
+      menuEventBus.$emit('add-text', this.currentPrimitive)
+      this.closeMenu()
+    },
+
+    updateCurrentEl (newTarget) {
+      this.currentEl = newTarget
     }
   },
   components: {
-    ImportForm,
-    ImportImage
+    ImportFile,
+    ImportImage,
+    Edit
+  },
+  watch: {
+    currentEl: function (newEl) {
+      if (newEl.tagName !== undefined) this.currentEl.setAttribute('data-pulse', true)
+    }
   },
   created () {
-    this.initMenu()
-    menuEventBus.$on('add-image', () => this.closeMenu())
+    this.currentEl = this.$store.state.html_location
+    menuEventBus
+      .$on('add-image', () => this.closeMenu())
+      .$on('init-menu', (status) => this.initMenu(status))
+      .$on('close-menu', () => this.setMenu('home'))
+      .$on('home-menu', () => this.setMenu('home'))
+      .$on('location-update', (newTarget) => this.updateCurrentEl(newTarget))
   }
 }
 
@@ -190,13 +234,12 @@ export default {
 
 <style lang="scss" scoped>
 
+@use 'sass:math';
+
 @mixin randomize {
   @for $i from 1 through 20 {
     &:nth-child(#{$i}) {
-      font-size: 2+random(2)+vmin;
-      // transform: translate( random(2)+#{$i}+vw , random(2)+#{$i}+vw );
-      // animation: shuffle 5s infinite;
-      // transition: transform random(5)+#{$i}+s;
+      font-size: #{2 + math.random(3)}vmin;
     }
   }
 }
@@ -206,7 +249,7 @@ export default {
     transform: translate(0,0)
   }
   50% {
-    transform: translate( random(1)+vw , random(1)+vw )
+    transform: translate(#{math.random(1)}vw, #{math.random(1)}vw)
   }
   100% {
     transform: translate(0,0)
@@ -231,7 +274,6 @@ export default {
   list-style: none;
 
   li {
-    @include randomize();
     position: relative;
     color: rgba(white, 0.66);
     cursor: pointer;
@@ -243,9 +285,11 @@ export default {
       animation-play-state: paused;
       z-index: 10;
     }
+
+    @include randomize();
   }
 
-  >>> form {
+  :deep(form) {
     padding: 10px;
     margin: 0 0 20px;
     background: rgba(255,255,255,0.25);

@@ -7,10 +7,10 @@
 </template>
 
 <script>
-import { menuEventBus, projectDataBus } from '../main'
+import { menuEventBus } from '../main.js'
 
 export default {
-  name: 'ImportForm',
+  name: 'ImportFile',
   data () {
     return {
       messFileList: null,
@@ -63,47 +63,36 @@ export default {
         let vm = this
         let file = new FileReader()
         let files = this.messFileList
+        menuEventBus
+          .$emit('hide-mess')
+          .$emit('close-menu')
         try {
           file.onload = () => {
             let theMess = JSON.parse(vm.dehashMess(file.result))
             vm.projectName = theMess.name
+            this.$store.commit('updateName', theMess.name)
             vm.projectHeader = theMess.header
+            this.$store.commit('updateHeader', theMess.header)
             vm.projectMain = theMess.main
+            this.$store.commit('updateMain', theMess.main)
             vm.projectFooter = theMess.footer
+            this.$store.commit('updateFooter', theMess.footer)
             vm.projectJs = theMess.js
+            this.$store.commit('updateJs', theMess.js)
             vm.projectCss = theMess.css
+            this.$store.commit('updateCss', theMess.css)
           }
           file.onloadend = () => {
-            menuEventBus.$emit('set-mess-db')
-            menuEventBus.$emit('refresh-mess-maker', 'import')
-            menuEventBus.$emit('close-menu')
-            menuEventBus.$emit('show-mess')
+            menuEventBus
+              .$emit('set-mess-db')
+              .$emit('refresh-mess-maker', 'import')
+              .$emit('show-mess')
           }
           file.readAsText(files[0])
         } catch (error) {
           alert('mess import failed \r\n' + error)
         }
       }
-    }
-  },
-  watch: {
-    projectName (newProjectName) {
-      projectDataBus.name = newProjectName
-    },
-    projectHeader (newProjectHeader) {
-      projectDataBus.header = newProjectHeader
-    },
-    projectMain (newProjectMain) {
-      projectDataBus.main = newProjectMain
-    },
-    projectFooter (newProjectFooter) {
-      projectDataBus.footer = newProjectFooter
-    },
-    projectJs (newProjectJs) {
-      projectDataBus.js = newProjectJs
-    },
-    projectCss (newProjectCss) {
-      projectDataBus.css = newProjectCss
     }
   }
 }
