@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HelloWorld from '@/components/HelloWorld.vue'
+import MessBuilder from '@/components/MessBuilder.vue'
 
 export default createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'HelloWorld',
-      component: HelloWorld
+      name: 'MessBuilder',
+      component: MessBuilder
     }
   ]
 })

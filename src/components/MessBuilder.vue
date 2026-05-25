@@ -13,7 +13,7 @@
 
     <main-menu v-show="showMenu"></main-menu>
 
-    <mess v-if=" status === 'dirty' "></mess>
+    <mess-maker v-if=" status === 'dirty' "></mess-maker>
 
   </section>
 </template>
@@ -23,10 +23,10 @@
 import { menuEventBus } from '../main.js'
 
 import MainMenu from './Menu.vue'
-import Mess from './MessMaker.vue'
+import MessMaker from './MessMaker.vue'
 
 export default {
-  name: 'HelloWorld',
+  name: 'MessBuilder',
   data () {
     return {
       intro: 'Don\'t See-A-Mess? Make one!<br><span>Right click to get started.</span>',
@@ -37,7 +37,7 @@ export default {
   },
   components: {
     MainMenu,
-    Mess
+    MessMaker
   },
   methods: {
 
