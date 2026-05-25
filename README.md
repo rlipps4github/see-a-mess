@@ -1,6 +1,11 @@
-# udemy-vue-cli
+# see-a-mess
 
-> A Vue.js project
+> A Vue 3 + Vite page builder project
+
+## Requirements
+
+- Node.js 18+
+- npm 9+
 
 ## Build Setup
 
@@ -8,14 +13,23 @@
 # install dependencies
 npm install
 
-# serve with hot reload at localhost:8080
+# serve with hot reload
 npm run dev
 
-# build for production with minification
+# alias for dev server
+npm run start
+
+# build for production
 npm run build
 
-# build for production and view the bundle analyzer report
-npm run build --report
+# preview the production build locally
+npm run preview
 ```
 
-For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
+## Stack
+
+- Vue 3
+- Vue Router 4
+- Vuex 4
+- Vite 5
+- Sass

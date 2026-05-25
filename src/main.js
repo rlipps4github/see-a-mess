@@ -1,10 +1,8 @@
-// The Vue build version to load with the `import` command
-// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import Vue from 'vue'
-import App from './App'
+import { createApp } from 'vue'
+import { createStore } from 'vuex'
+import mitt from 'mitt'
+import App from './App.vue'
 import router from './router'
-
-Vue.config.productionTip = false
 
 const DB_NAME = 'see-a-mess-db'
 const DB_VERSION = 1
@@ -38,158 +36,215 @@ const FooterTemplate =
   <div class="column unstyled col-3"></div>
 </div>`
 
-export const menuEventBus = new Vue()
-export const projectDataBus = new Vue({
-  data: {
+const emitter = mitt()
+export const menuEventBus = {
+  $on (eventName, handler) {
+    emitter.on(eventName, handler)
+    return this
+  },
+  $off (eventName, handler) {
+    emitter.off(eventName, handler)
+    return this
+  },
+  $emit (eventName, payload) {
+    emitter.emit(eventName, payload)
+    return this
+  }
+}
+
+export const store = createStore({
+  state: {
     name: null,
     header: HeaderTemplate,
     main: MainTemplate,
     footer: FooterTemplate,
-    js: [],
-    css: { images: [], fonts: [], stylesheets: [] }
-  }
-})
-
-/* eslint-disable no-new */
-new Vue({
-  el: '#app',
-  router,
-  components: { App },
-  template: '<App/>',
-  data: {
-    showMenu: false,
-    db: null,
-    ready: false,
-    mess: []
+    js: {},
+    css: {
+      images: [],
+      fonts: [],
+      stylesheets: [],
+      breakpoints: [640, 960]
+    },
+    html_location: {}
   },
-  methods: {
-    async getDb () {
-      return new Promise((resolve, reject) => {
-        let request = window.indexedDB.open(DB_NAME, DB_VERSION)
-        request.onerror = e => {
-          console.log('Error opening db', e)
-          reject(e)
-        }
-        request.onsuccess = e => {
-          console.log('Opening db')
-          resolve(e.target.result)
-        }
-        request.onupgradeneeded = e => {
-          console.log('Creating Object Store')
-          let db = e.target.result
-          db.createObjectStore(DB_STORE_NAME)
-        }
-      })
+  mutations: {
+    updateName (state, newVal) {
+      state.name = newVal
     },
-
-    async getMessFromDb () {
-      return new Promise((resolve, reject) => {
-        let tr = this.db.transaction([DB_STORE_NAME], 'readonly')
-        tr.oncomplete = e => resolve(mess)
-        let store = tr.objectStore(DB_STORE_NAME)
-        let mess = []
-        store.openCursor().onsuccess = e => {
-          let cursor = e.target.result
-          if (cursor) {
-            mess.push(cursor.value)
-            cursor.continue()
-          }
-        }
-      })
+    updateHeader (state, newVal) {
+      state.header = newVal
     },
-
-    async addMess (dirty = true) {
-      if (dirty) console.log('update mess data bus -> mess db')
-      else console.log('add mess data bus -> mess db')
-      let mess = {
-        name: projectDataBus.name,
-        header: projectDataBus.header,
-        main: projectDataBus.main,
-        footer: projectDataBus.footer,
-        js: projectDataBus.js,
-        css: projectDataBus.css
-      }
-      if (dirty) await this.updateDB(mess)
-      else await this.addMessDB(mess)
-      this.mess = await this.getMessFromDb()
+    updateMain (state, newVal) {
+      state.main = newVal
     },
-
-    async addMessDB (mess) {
-      return new Promise((resolve, reject) => {
-        let tr = this.db.transaction([DB_STORE_NAME], 'readwrite')
-        tr.oncomplete = e => resolve()
-        let store = tr.objectStore(DB_STORE_NAME)
-        store.add(mess, 0)
-        console.log('new mess db added')
-        menuEventBus.$emit('refresh-mess-maker', 'import')
-      })
+    updateFooter (state, newVal) {
+      state.footer = newVal
     },
-
-    async updateDB (mess) {
-      return new Promise((resolve, reject) => {
-        let objectStore = this.db.transaction([DB_STORE_NAME], 'readwrite').objectStore(DB_STORE_NAME)
-        let request = objectStore.get(0)
-        request.onerror = e => console.log('error requesting mess db update:' + e.target.error)
-        request.onsuccess = e => {
-          let data = e.target.result
-          data = mess
-          let requestUpdate = objectStore.put(data, 0)
-          requestUpdate.onerror = e => console.log('error updating mess db:' + e.target.error)
-          requestUpdate.onsuccess = e => {
-            console.log('mess db updated')
-          }
-        }
-      })
+    updateJs (state, newVal) {
+      state.js = newVal
     },
-
-    async wipeMess () {
-      this.mess = []
-      projectDataBus.name = null
-      projectDataBus.header = HeaderTemplate
-      projectDataBus.main = MainTemplate
-      projectDataBus.footer = FooterTemplate
-      projectDataBus.js = []
-      projectDataBus.css = { images: [], fonts: [], stylesheets: [] }
-      let store = this.db.transaction([DB_STORE_NAME], 'readwrite').objectStore(DB_STORE_NAME)
-      let req = store.clear()
-      req.onsuccess = e => {
-        console.log('mess db store removed')
-        menuEventBus.$emit('close-menu')
-        menuEventBus.$emit('new-mess')
-      }
-      req.onerror = e => console.error('clearObjectStore:', e.target.errorCode)
+    updateCss (state, newVal) {
+      state.css = newVal
     },
-
-    setProjectData () {
-      if (this.mess[0] !== undefined) {
-        projectDataBus.name = this.mess[0]['name']
-        projectDataBus.header = this.mess[0]['header']
-        projectDataBus.main = this.mess[0]['main']
-        projectDataBus.footer = this.mess[0]['footer']
-        projectDataBus.js = this.mess[0]['js']
-        projectDataBus.css = this.mess[0]['css']
-        console.log('found a mess = mess db -> data bus')
-        menuEventBus.$emit('init-app')
-      } else {
-        menuEventBus.$emit('init-app')
-      }
+    updateImages (state, newVal) {
+      state.css['images'] = newVal
+    },
+    updateLocation (state, newVal) {
+      state.html_location = newVal
     }
   },
-
-  async created () {
-    this.db = await this.getDb()
-    this.mess = await this.getMessFromDb()
-    this.ready = true
-    this.setProjectData()
-
-    menuEventBus
-      .$on('start-mess-db', () => this.addMess(false)) // false = mess is clean
-      .$on('set-mess-db', () => this.addMess(true)) // true = mess is dirty
-      .$on('wipe-mess-db', () => this.wipeMess())
+  actions: {
+    updateTheImages (context, newVal) {
+      context.commit('updateImages', newVal)
+    },
+    updateTheLocation (context, newVal) {
+      context.commit('updateLocation', newVal)
+    }
   }
 })
 
-// BLOB DOWNLOAD HACK
+const app = createApp(App)
+app.use(router)
+app.use(store)
+app.mount('#app')
+
+let db = null
+let mess = []
+
+async function getDb () {
+  return new Promise((resolve, reject) => {
+    let request = window.indexedDB.open(DB_NAME, DB_VERSION)
+    request.onerror = e => {
+      console.log('Error opening db', e)
+      reject(e)
+    }
+    request.onsuccess = e => {
+      console.log('Opening db')
+      resolve(e.target.result)
+    }
+    request.onupgradeneeded = e => {
+      console.log('Creating Object Store')
+      let currentDb = e.target.result
+      currentDb.createObjectStore(DB_STORE_NAME)
+    }
+  })
+}
+
+async function getMessFromDb () {
+  return new Promise((resolve, reject) => {
+    let tr = db.transaction([DB_STORE_NAME], 'readonly')
+    tr.oncomplete = e => resolve(mess)
+    let objectStore = tr.objectStore(DB_STORE_NAME)
+    let data = []
+    objectStore.openCursor().onsuccess = e => {
+      let cursor = e.target.result
+      if (cursor) {
+        data.push(cursor.value)
+        cursor.continue()
+      }
+    }
+    tr.onerror = reject
+    tr.oncomplete = () => resolve(data)
+  })
+}
+
+async function addMessDB (newMess) {
+  return new Promise((resolve, reject) => {
+    let tr = db.transaction([DB_STORE_NAME], 'readwrite')
+    tr.oncomplete = e => resolve()
+    tr.onerror = reject
+    let objectStore = tr.objectStore(DB_STORE_NAME)
+    objectStore.add(newMess, 0)
+    console.log('new mess db added')
+    menuEventBus.$emit('refresh-mess-maker', 'import')
+  })
+}
+
+async function updateDB (newMess) {
+  return new Promise((resolve, reject) => {
+    let objectStore = db.transaction([DB_STORE_NAME], 'readwrite').objectStore(DB_STORE_NAME)
+    let request = objectStore.get(0)
+    request.onerror = e => {
+      console.log('error requesting mess db update:' + e.target.error)
+      reject(e.target.error)
+    }
+    request.onsuccess = e => {
+      let data = e.target.result
+      data = newMess
+      let requestUpdate = objectStore.put(data, 0)
+      requestUpdate.onerror = e => {
+        console.log('error updating mess db:' + e.target.error)
+        reject(e.target.error)
+      }
+      requestUpdate.onsuccess = () => {
+        console.log('mess db updated')
+        resolve()
+      }
+    }
+  })
+}
+
+async function addMess (dirty = true) {
+  if (dirty) console.log('update mess: data store -> mess db')
+  else console.log('add mess: data store -> mess db')
+  let newMess = JSON.parse(JSON.stringify({
+    name: store.state.name,
+    header: store.state.header,
+    main: store.state.main,
+    footer: store.state.footer,
+    js: store.state.js,
+    css: store.state.css
+  }))
+  if (dirty) await updateDB(newMess)
+  else await addMessDB(newMess)
+  mess = await getMessFromDb()
+}
+
+async function wipeMess () {
+  mess = []
+  store.state.name = null
+  store.state.header = HeaderTemplate
+  store.state.main = MainTemplate
+  store.state.footer = FooterTemplate
+  store.state.js = []
+  store.state.css = { images: [], fonts: [], stylesheets: [] }
+  let objectStore = db.transaction([DB_STORE_NAME], 'readwrite').objectStore(DB_STORE_NAME)
+  let req = objectStore.clear()
+  req.onsuccess = e => {
+    console.log('mess db store removed')
+    menuEventBus.$emit('close-menu')
+    menuEventBus.$emit('new-mess')
+  }
+  req.onerror = e => console.error('clearObjectStore:', e.target.errorCode)
+}
+
+function setProjectData () {
+  if (mess[0] !== undefined) {
+    store.commit('updateName', mess[0].name)
+    store.commit('updateHeader', mess[0].header)
+    store.commit('updateMain', mess[0].main)
+    store.commit('updateFooter', mess[0].footer)
+    store.commit('updateJs', mess[0].js)
+    store.commit('updateCss', mess[0].css)
+    console.log('found a mess = mess db -> data store')
+  }
+  menuEventBus.$emit('init-app')
+}
+
+async function bootstrapDb () {
+  db = await getDb()
+  mess = await getMessFromDb()
+  setProjectData()
+
+  menuEventBus
+    .$on('start-mess-db', () => addMess(false))
+    .$on('set-mess-db', () => addMess(true))
+    .$on('wipe-mess-db', () => wipeMess())
+}
+
+bootstrapDb()
+
+// SUPER SIMPLE BLOB DOWNLOAD
 console.save = function (data, filename) {
   if (!data) return console.error('no data to save?!')
   if (!filename) filename = 'console.json'
