@@ -9,16 +9,16 @@ Add a first-class Add Page action from the top-level menu that prompts for a pag
 - New page should use the same structural skeleton as the initial home page in a new mess.
 
 ## Current Code Reality (Source of Truth)
-- Home page skeleton is defined in [src/main.js](src/main.js) as `MainTemplate`.
-- Top-level menu entries are defined in [src/components/Menu.vue](src/components/Menu.vue) via `homeList`.
-- New menu actions route through [src/components/Menu.vue](src/components/Menu.vue) `menuClick` and event bus emits.
-- Builder insertion logic belongs in [src/components/MessMaker.vue](src/components/MessMaker.vue).
+- Home page skeleton is defined in [src/main.js](../src/main.js) as `MainTemplate`.
+- Top-level menu entries are defined in [src/components/Menu.vue](../src/components/Menu.vue) via `homeList`.
+- New menu actions route through [src/components/Menu.vue](../src/components/Menu.vue) `menuClick` and event bus emits.
+- Builder insertion logic belongs in [src/components/MessMaker.vue](../src/components/MessMaker.vue).
 
 ## Implementation Plan
 
 ### Phase 1: Menu Entry and Event Wiring
 File targets:
-- [src/components/Menu.vue](src/components/Menu.vue)
+- [src/components/Menu.vue](../src/components/Menu.vue)
 
 Tasks:
 - Add Add Page to the Add submenu as the first item in `moduleListPrimary`.
@@ -32,13 +32,13 @@ Acceptance:
 
 ### Phase 2: Page Template Extraction and Reuse
 File targets:
-- [src/main.js](src/main.js)
-- [src/components/MessMaker.vue](src/components/MessMaker.vue)
+- [src/main.js](../src/main.js)
+- [src/components/MessMaker.vue](../src/components/MessMaker.vue)
 
 Tasks:
-- Introduce a reusable exported helper in [src/main.js](src/main.js) to generate page skeleton markup (same row/column/content structure currently in `MainTemplate`).
+- Introduce a reusable exported helper in [src/main.js](../src/main.js) to generate page skeleton markup (same row/column/content structure currently in `MainTemplate`).
 - Keep existing `MainTemplate` behavior by composing it from the helper (for backward compatibility).
-- Import helper in [src/components/MessMaker.vue](src/components/MessMaker.vue) to guarantee exact skeleton parity.
+- Import helper in [src/components/MessMaker.vue](../src/components/MessMaker.vue) to guarantee exact skeleton parity.
 
 Proposed helper contract:
 - `buildPageTemplate(pageId, pageName)` returning `<section class="page unstyled" id="..." data-page-name="...">...</section>` with existing row/column/content skeleton.
@@ -49,7 +49,7 @@ Acceptance:
 
 ### Phase 3: Add Page Runtime Flow
 File targets:
-- [src/components/MessMaker.vue](src/components/MessMaker.vue)
+- [src/components/MessMaker.vue](../src/components/MessMaker.vue)
 
 Tasks:
 - Subscribe to `add-page` in created hook.
@@ -75,7 +75,7 @@ Acceptance:
 
 ### Phase 4: Navigation and Side Effects Integration
 File targets:
-- [src/components/MessMaker.vue](src/components/MessMaker.vue)
+- [src/components/MessMaker.vue](../src/components/MessMaker.vue)
 
 Tasks:
 - Ensure auto-navigation menus include newly added page labels immediately.
@@ -88,8 +88,8 @@ Acceptance:
 
 ### Phase 5: Tests
 File targets:
-- [tests/Menu.spec.js](tests/Menu.spec.js)
-- [tests/MessMaker.spec.js](tests/MessMaker.spec.js)
+- [tests/Menu.spec.js](../tests/Menu.spec.js)
+- [tests/MessMaker.spec.js](../tests/MessMaker.spec.js)
 
 Tests to add:
 - Menu: Add Page appears in home menu and emits `add-page`.
@@ -102,8 +102,8 @@ Acceptance:
 - New and existing tests pass.
 
 ## Risks and Mitigations
-- Circular import risk from [src/main.js](src/main.js):
-  - Mitigation: extract template helper to a small shared module if needed (fallback plan: [src/utils/pageTemplates.js](src/utils/pageTemplates.js)).
+- Circular import risk from [src/main.js](../src/main.js):
+  - Mitigation: extract template helper to a small shared module if needed (fallback plan: [src/utils/pageTemplates.js](../src/utils/pageTemplates.js)).
 - Prompt UX blocking tests:
   - Mitigation: mock `window.prompt` in unit tests.
 

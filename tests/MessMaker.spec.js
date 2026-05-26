@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import MessMaker from '../src/components/MessMaker.vue'
 
@@ -45,6 +45,8 @@ vi.mock('/src/main.js', () => ({
 }))
 
 describe('MessMaker.vue', () => {
+  let mountedWrappers = []
+
   beforeEach(() => {
     menuEventBus.reset()
     window.scrollTo = vi.fn()
@@ -62,6 +64,12 @@ describe('MessMaker.vue', () => {
         <div id="mess-footer"></div>
       </section>
     `
+    mountedWrappers = []
+  })
+
+  afterEach(() => {
+    mountedWrappers.forEach((wrapper) => wrapper.unmount())
+    mountedWrappers = []
   })
 
   function makeStore (name = null, overrides = {}) {
@@ -80,7 +88,7 @@ describe('MessMaker.vue', () => {
   }
 
   function makeWrapper (name = null, stateOverrides = {}) {
-    return mount(MessMaker, {
+    const wrapper = mount(MessMaker, {
       attachTo: document.body,
       global: {
         mocks: {
@@ -88,6 +96,8 @@ describe('MessMaker.vue', () => {
         }
       }
     })
+    mountedWrappers.push(wrapper)
+    return wrapper
   }
 
   it('emits wipe-mess-db during init when store has no project name', () => {
@@ -118,6 +128,40 @@ describe('MessMaker.vue', () => {
 
     const labels = Array.from(nav.querySelectorAll('.navigation-menu__link')).map((link) => link.textContent.trim())
     expect(labels).toContain('Home')
+  })
+
+  it('keeps navigation component mounted after addNavigationMenu persists html', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    await nextTick()
+    await nextTick()
+
+    const nav = document.querySelector('nav[data-navigation-menu="true"]')
+    expect(nav.__navigationMenuApp).toBeTruthy()
+    expect(nav.querySelector('.navigation-menu__link')).toBeTruthy()
+  })
+
+  it('keeps navigation component mounted after refresh-navigation-menus event', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    await nextTick()
+    await nextTick()
+
+    menuEventBus.$emit('refresh-navigation-menus')
+    await nextTick()
+    await nextTick()
+
+    const nav = document.querySelector('nav[data-navigation-menu="true"]')
+    expect(nav.__navigationMenuApp).toBeTruthy()
+    expect(nav.querySelector('.navigation-menu__link')).toBeTruthy()
   })
 
   it('refreshes auto-navigation menus when pages change', async () => {
@@ -367,5 +411,32 @@ describe('MessMaker.vue', () => {
 
     expect(pushSpy).not.toHaveBeenCalled()
     pushSpy.mockRestore()
+  })
+
+  it('unmounts nav app before removing a container that includes navigation', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    await nextTick()
+    await nextTick()
+
+    const header = document.querySelector('#mess-header')
+    const nav = header.querySelector('nav[data-navigation-menu="true"]')
+    const container = document.createElement('div')
+    header.appendChild(container)
+    container.appendChild(nav)
+
+    const unmountSpy = vi.spyOn(wrapper.vm, 'unmountNavigationMenuComponent')
+    wrapper.vm.html_location = container
+    wrapper.vm.page_location = 'header'
+
+    wrapper.vm.removeEl()
+
+    expect(unmountSpy).toHaveBeenCalledWith(nav)
+    expect(nav.__navigationMenuApp).toBeNull()
+    unmountSpy.mockRestore()
   })
 })

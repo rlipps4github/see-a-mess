@@ -56,8 +56,8 @@ Implement a new Add Navigation Menu action in the right-click Add menu that inse
 ## Component Architecture Recommendation
 - Yes, it makes sense to create separate components for this feature.
 - Recommended new components:
-  - src/components/NavigationMenu.vue
-  - src/components/EditNavigation.vue
+  - ../src/components/NavigationMenu.vue
+  - ../src/components/EditNavigation.vue
 
 ### Why This Split Helps
 - Keeps navigation rendering and interaction logic out of MessMaker.vue.
@@ -90,25 +90,25 @@ Implement a new Add Navigation Menu action in the right-click Add menu that inse
 ## Implementation Steps
 
 ### Phase 0. Scaffolding
-Files: src/components/NavigationMenu.vue, src/components/EditNavigation.vue
+Files: ../src/components/NavigationMenu.vue, ../src/components/EditNavigation.vue
 - Create new components with minimal templates and prop contracts.
 - Add unit tests for rendering and emitted events before feature logic.
 
 ### 1. Menu Action Wiring
-File: src/components/Menu.vue
+File: ../src/components/Menu.vue
 - Keep module list label as Add Navigation Menu.
 - Add switch case for Add Navigation Menu in menuClick.
 - Emit a new event on the existing event bus, for example add-navigation-menu.
 - Close the menu after emitting.
 
 ### 2. Builder Event Listener
-File: src/components/MessMaker.vue
+File: ../src/components/MessMaker.vue
 - Add created-hook listener for add-navigation-menu.
 - Route event to a new method, for example addNavigationMenu.
 - Reuse existing updateMess flow after insertion.
 
 ### 3. Navigation Insertion Logic
-File: src/components/MessMaker.vue
+File: ../src/components/MessMaker.vue
 - Add a new method that builds a default structure using document.createElement:
   - nav element with utility class names and data attributes for nav settings.
   - ul list container.
@@ -118,7 +118,7 @@ File: src/components/MessMaker.vue
 - Clear pulse state before insertion, consistent with other add actions.
 
 ### 4. Auto-Update Engine for Nav Instances
-File: src/components/MessMaker.vue
+File: ../src/components/MessMaker.vue
 - Add utility methods:
   - getActivePages()
   - buildNavItemsFromPages()
@@ -128,7 +128,7 @@ File: src/components/MessMaker.vue
 - Preserve user-edited links when Auto Navigation Off.
 
 ### 5. Baseline Styling
-File: src/components/MessMaker.vue
+File: ../src/components/MessMaker.vue
 - Add minimal classes for nav layout:
   - Horizontal list.
   - Spacing and alignment.
@@ -136,7 +136,7 @@ File: src/components/MessMaker.vue
 - Keep styles lightweight and compatible with existing unstyled overlay behavior.
 
 ### 5a. Responsive Mobile Menu Styling and Behavior
-File: src/components/MessMaker.vue
+File: ../src/components/MessMaker.vue
 - At max-width 960px:
   - Hide inline nav list by default.
   - Show a textual MENU button.
@@ -149,7 +149,7 @@ File: src/components/MessMaker.vue
 - Ensure close behavior works on selection and explicit dismiss action.
 
 ### 6. Edit Panel Enhancements for nav
-Files: src/components/EditElement.vue, src/components/EditNavigation.vue
+Files: ../src/components/EditElement.vue, ../src/components/EditNavigation.vue
 - Detect when edited target is nav-related.
 - Render EditNavigation.vue for nav-only controls:
   - Toggle Auto Navigation button with labels and hints from requirements.
@@ -157,7 +157,7 @@ Files: src/components/EditElement.vue, src/components/EditNavigation.vue
 - Save nav settings to attributes/data fields on the nav instance.
 
 ### 7. SPS Navigation Mode Implementation
-Files: src/components/NavigationMenu.vue, src/components/EditNavigation.vue
+Files: ../src/components/NavigationMenu.vue, ../src/components/EditNavigation.vue
 - On SPS On:
   - Keep sections visible.
   - Use smooth scrolling to target section top.
@@ -170,7 +170,7 @@ Files: src/components/NavigationMenu.vue, src/components/EditNavigation.vue
   - Support hash/manual URL navigation to switch active section.
 
 ### 7a. URL/Hash Router Synchronization Baseline
-Files: src/components/NavigationMenu.vue, src/main.js
+Files: ../src/components/NavigationMenu.vue, ../src/main.js
 - Add a shared handler for hashchange and initial URL parsing.
 - Resolve hash target to matching section.page id.
 - In SPS On:
@@ -180,7 +180,7 @@ Files: src/components/NavigationMenu.vue, src/main.js
 - Keep browser history and title updates aligned with current active page in both modes.
 
 ### 8. Persistence and Compatibility Checks
-Files: src/components/MessMaker.vue, src/main.js
+Files: ../src/components/MessMaker.vue, ../src/main.js
 - Confirm inserted nav updates state via existing updateMess and set-mess-db path.
 - Confirm no DataCloneError with persisted payload.
 - Confirm import/export roundtrip retains nav markup.
@@ -204,7 +204,7 @@ Files: src/components/MessMaker.vue, src/main.js
 - Run npm run build and npm run start.
 
 ### 10. Test Plan Expansion
-Files: tests/NavigationMenu.spec.js, tests/EditNavigation.spec.js
+Files: ../tests/NavigationMenu.spec.js, ../tests/EditNavigation.spec.js
 - Verify default links are generated from section.page data.
 - Verify Auto Navigation On syncs all nav instances on page add/remove.
 - Verify Auto Navigation Off preserves user-edited links.

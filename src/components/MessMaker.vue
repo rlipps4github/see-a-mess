@@ -574,6 +574,10 @@ export default {
       this.mountNavigationMenuComponent(nav)
       this.applyInitialNavigationState()
       this.updateMess(this.page_location)
+      nextTick(() => {
+        this.refreshNavigationMenus()
+        this.applyInitialNavigationState()
+      })
     },
 
     addText (tagname) {
@@ -653,6 +657,16 @@ export default {
 
     removeEl () {
       let removeTarget = this.html_location
+      let navigationTargets = []
+
+      if (removeTarget && typeof removeTarget.matches === 'function' && removeTarget.matches('nav[data-navigation-menu="true"]')) {
+        navigationTargets.push(removeTarget)
+      }
+      if (removeTarget && typeof removeTarget.querySelectorAll === 'function') {
+        navigationTargets.push(...removeTarget.querySelectorAll('nav[data-navigation-menu="true"]'))
+      }
+      navigationTargets.forEach((nav) => this.unmountNavigationMenuComponent(nav))
+
       let removeTargetParent = removeTarget.parentNode
       removeTarget.remove()
       if (removeTarget.classList.contains('row')) this.updateRows(removeTargetParent)
@@ -677,8 +691,11 @@ export default {
       .$on('add-page', () => this.addPage())
       .$on('add-navigation-menu', () => this.addNavigationMenu())
       .$on('refresh-navigation-menus', () => {
-        this.refreshNavigationMenus()
         this.updateMess(this.page_location)
+        nextTick(() => {
+          this.refreshNavigationMenus()
+          this.applyInitialNavigationState()
+        })
       })
   },
   mounted () {
