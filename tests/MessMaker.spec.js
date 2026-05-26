@@ -185,6 +185,35 @@ describe('MessMaker.vue', () => {
     expect(document.querySelector('#home').classList.contains('hidden')).toBe(true)
   })
 
+  it('uses clicked nav SPS mode during hashchange navigation', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    const main = document.querySelector('#mess-main')
+    const secondPage = document.createElement('section')
+    secondPage.className = 'page'
+    secondPage.id = 'contact'
+    main.appendChild(secondPage)
+
+    const firstNav = document.createElement('nav')
+    firstNav.setAttribute('data-navigation-menu', 'true')
+    firstNav.setAttribute('data-sps-enabled', 'on')
+
+    const secondNav = document.createElement('nav')
+    secondNav.setAttribute('data-navigation-menu', 'true')
+    secondNav.setAttribute('data-sps-enabled', 'off')
+
+    document.querySelector('#mess-header').appendChild(firstNav)
+    document.querySelector('#mess-footer').appendChild(secondNav)
+
+    window.history.replaceState({}, '', '/#home')
+    wrapper.vm.handleNavigationIntent('contact', secondNav)
+    wrapper.vm.handleNavigationHashChange()
+
+    expect(document.querySelector('#contact').classList.contains('hidden')).toBe(false)
+    expect(document.querySelector('#home').classList.contains('hidden')).toBe(true)
+  })
+
   it('updates title and meta tags on navigation', async () => {
     const wrapper = makeWrapper('Demo')
     await nextTick()
@@ -273,5 +302,70 @@ describe('MessMaker.vue', () => {
     wrapper.vm.addPage()
 
     expect(document.querySelectorAll('#mess-main section.page').length).toBe(1)
+  })
+
+  it('preserves manual nav link edits when refreshNavigationMenus runs', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    const main = document.querySelector('#mess-main')
+    const secondPage = document.createElement('section')
+    secondPage.className = 'page'
+    secondPage.id = 'contact'
+    main.appendChild(secondPage)
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    wrapper.vm.refreshNavigationMenus()
+    await nextTick()
+
+    const nav = document.querySelector('nav[data-navigation-menu="true"]')
+    nav.setAttribute('data-auto-navigation', 'off')
+    wrapper.vm.refreshNavigationMenus()
+    await nextTick()
+
+    const homeLink = Array.from(nav.querySelectorAll('.navigation-menu__link'))
+      .find((link) => link.textContent.trim() === 'Home')
+    homeLink.setAttribute('href', '#contact')
+    homeLink.textContent = 'Contact'
+
+    wrapper.vm.refreshNavigationMenus()
+    await nextTick()
+
+    const links = Array.from(nav.querySelectorAll('.navigation-menu__link')).map((link) => ({
+      label: link.textContent.trim(),
+      href: link.getAttribute('href')
+    }))
+
+    expect(links.some((link) => link.label === 'Contact' && link.href === '#contact')).toBe(true)
+  })
+
+  it('does not double-handle clicks from mounted navigation component links', async () => {
+
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    const main = document.querySelector('#mess-main')
+    const secondPage = document.createElement('section')
+    secondPage.className = 'page'
+    secondPage.id = 'contact'
+    main.appendChild(secondPage)
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    wrapper.vm.refreshNavigationMenus()
+    await nextTick()
+
+    window.history.replaceState({}, '', '/#home')
+    const pushSpy = vi.spyOn(window.history, 'pushState')
+    const contactLink = Array.from(document.querySelectorAll('nav[data-navigation-menu="true"] .navigation-menu__link'))
+      .find((link) => link.textContent.trim() === 'Contact')
+
+    contactLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    expect(pushSpy).not.toHaveBeenCalled()
+    pushSpy.mockRestore()
   })
 })

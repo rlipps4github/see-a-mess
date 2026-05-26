@@ -87,16 +87,15 @@ export default {
   data () {
     return {
       mobileMenuOpen: false,
-      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200
+      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
+      activePageId: typeof window !== 'undefined'
+        ? (window.location.hash || '').replace(/^#/, '').trim()
+        : ''
     }
   },
   computed: {
     isMobile () {
       return this.viewportWidth <= this.mobileBreakpoint
-    },
-    activeHashId () {
-      if (typeof window === 'undefined') return ''
-      return (window.location.hash || '').replace(/^#/, '').trim()
     }
   },
   mounted () {
@@ -105,19 +104,34 @@ export default {
       this.viewportWidth = window.innerWidth
       if (!this.isMobile && this.mobileMenuOpen) this.closeMobileMenu()
     }
+    this.handleHashChange = () => this.syncActivePageFromHash()
+    this.syncActivePageFromHash()
     window.addEventListener('resize', this.handleResize)
+    window.addEventListener('hashchange', this.handleHashChange)
   },
   unmounted () {
     if (this.handleResize) window.removeEventListener('resize', this.handleResize)
+    if (this.handleHashChange) window.removeEventListener('hashchange', this.handleHashChange)
   },
   methods: {
     handleSelect (page, event) {
-      if (event) event.preventDefault()
+      if (event) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+      this.activePageId = page && page.id ? page.id : ''
       this.$emit('navigate', page)
       if (this.isMobile) this.closeMobileMenu()
     },
     isActivePage (pageId) {
-      return this.activeHashId !== '' && this.activeHashId === pageId
+      return this.activePageId !== '' && this.activePageId === pageId
+    },
+    syncActivePageFromHash () {
+      if (typeof window === 'undefined') {
+        this.activePageId = ''
+        return
+      }
+      this.activePageId = (window.location.hash || '').replace(/^#/, '').trim()
     },
     openMobileMenu () {
       this.mobileMenuOpen = true

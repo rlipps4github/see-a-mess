@@ -24,6 +24,8 @@ export default {
       footer: '',
       navClickHandler: null,
       hashChangeHandler: null,
+      pendingNavigationTargetId: null,
+      pendingNavigationNavEl: null,
       js: {},
       css: {}
     }
@@ -281,9 +283,16 @@ export default {
         state.pages = this.getActivePages()
       } else {
         if (wasAutoNavigation) nav.__navigationManualPages = state.pages.slice()
-        if (!Array.isArray(nav.__navigationManualPages) || nav.__navigationManualPages.length === 0) {
-          nav.__navigationManualPages = this.getNavigationPagesFromNode(nav)
+
+        let domManualPages = this.getNavigationPagesFromNode(nav)
+        if (domManualPages.length > 0) {
+          nav.__navigationManualPages = domManualPages
         }
+
+        if (!Array.isArray(nav.__navigationManualPages) || nav.__navigationManualPages.length === 0) {
+          nav.__navigationManualPages = state.pages.slice()
+        }
+
         state.pages = nav.__navigationManualPages
       }
     },
@@ -374,6 +383,15 @@ export default {
       if (!targetId) return
       let targetHash = '#' + targetId
       let isCurrentHash = window.location.hash === targetHash
+
+      if (isCurrentHash) {
+        this.pendingNavigationTargetId = null
+        this.pendingNavigationNavEl = null
+      } else {
+        this.pendingNavigationTargetId = targetId
+        this.pendingNavigationNavEl = navEl
+      }
+
       this.setNavigationHistory(targetId, 'push')
       if (isCurrentHash) this.navigateToSection(targetId, navEl)
     },
@@ -408,7 +426,15 @@ export default {
       let hash = window.location.hash || ''
       let targetId = hash.replace(/^#/, '').trim()
       if (!targetId) return
-      this.navigateToSection(targetId)
+
+      let contextualNavEl = null
+      if (this.pendingNavigationTargetId === targetId && this.pendingNavigationNavEl) {
+        contextualNavEl = this.pendingNavigationNavEl
+      }
+
+      this.navigateToSection(targetId, contextualNavEl)
+      this.pendingNavigationTargetId = null
+      this.pendingNavigationNavEl = null
     },
 
     bindNavigationHandlers () {

@@ -52,4 +52,28 @@ describe('NavigationMenu.vue', () => {
 
     window.innerWidth = originalInnerWidth
   })
+
+  it('updates aria-current when hash changes', async () => {
+    window.history.replaceState({}, '', '/#home')
+    const wrapper = mount(NavigationMenu, {
+      props: {
+        pages: [
+          { id: 'home', label: 'Home' },
+          { id: 'about', label: 'About' }
+        ]
+      }
+    })
+
+    const homeLink = wrapper.findAll('.navigation-menu__link')[0]
+    const aboutLink = wrapper.findAll('.navigation-menu__link')[1]
+    expect(homeLink.attributes('aria-current')).toBe('page')
+    expect(aboutLink.attributes('aria-current')).toBeUndefined()
+
+    window.history.replaceState({}, '', '/#about')
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('.navigation-menu__link')[0].attributes('aria-current')).toBeUndefined()
+    expect(wrapper.findAll('.navigation-menu__link')[1].attributes('aria-current')).toBe('page')
+  })
 })
