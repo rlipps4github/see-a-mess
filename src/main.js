@@ -14,8 +14,8 @@ const HeaderTemplate =
     <h1>Remove me and add header content!</h1>
   </div>
 </div>`
-const MainTemplate =
-`<section id="home" class="page unstyled">
+export function buildPageTemplate (pageId = 'home') {
+  return `<section id="${pageId}" class="page unstyled">
   <div class="row unstyled">
     <div class="column unstyled col-2">
       <div class="content unstyled">
@@ -27,6 +27,8 @@ const MainTemplate =
     </div>
   </div>
 </section>`
+}
+const MainTemplate = buildPageTemplate('home')
 const FooterTemplate =
 `<div class="row unstyled">
   <div class="column unstyled col-3">

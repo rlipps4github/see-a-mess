@@ -7,8 +7,10 @@
 </template>
 
 <script>
+import { createApp, h, reactive, nextTick } from 'vue'
+import NavigationMenu from './NavigationMenu.vue'
 
-import { menuEventBus } from '../main.js'
+import { buildPageTemplate, menuEventBus } from '../main.js'
 
 export default {
   name: 'Mess',
@@ -20,6 +22,8 @@ export default {
       header: '',
       main: '',
       footer: '',
+      navClickHandler: null,
+      hashChangeHandler: null,
       js: {},
       css: {}
     }
@@ -186,6 +190,366 @@ export default {
       highlightedEls.forEach((el) => el.removeAttribute('data-pulse'))
     },
 
+    derivePageLabel (pageEl, fallbackIndex = 1) {
+      if (pageEl.getAttribute('data-page-name')) return pageEl.getAttribute('data-page-name')
+      if (pageEl.id && pageEl.id.trim() !== '') {
+        return pageEl.id
+          .replace(/[-_]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+      }
+      return 'Page ' + fallbackIndex
+    },
+
+    getActivePages () {
+      let pages = Array.from(document.querySelectorAll('#mess-main section.page'))
+      return pages
+        .filter((page) => page.id && page.id.trim() !== '')
+        .map((page, index) => ({
+          id: page.id,
+          label: this.derivePageLabel(page, index + 1)
+        }))
+    },
+
+    getNavigationPagesFromNode (nav) {
+      if (!nav) return []
+      return Array.from(nav.querySelectorAll('a[href^="#"]')).map((link) => {
+        let href = link.getAttribute('href') || ''
+        return {
+          id: href.replace(/^#/, '').trim(),
+          label: (link.textContent || '').trim()
+        }
+      }).filter((page) => page.id)
+    },
+
+    mountNavigationMenuComponent (nav) {
+      if (!nav) return
+
+      let autoNavigation = nav.getAttribute('data-auto-navigation') !== 'off'
+      let manualPages = this.getNavigationPagesFromNode(nav)
+      let state = reactive({
+        pages: autoNavigation ? this.getActivePages() : manualPages,
+        autoNavigation,
+        spsEnabled: nav.getAttribute('data-sps-enabled') !== 'off',
+        mobileBreakpoint: 960
+      })
+
+      let mountTarget = document.createElement('div')
+      mountTarget.className = 'navigation-menu__mount'
+      nav.innerHTML = ''
+      nav.appendChild(mountTarget)
+
+      let rootVm = this
+      let app = createApp({
+        name: 'NavigationMenuMount',
+        setup () {
+          return () => h(NavigationMenu, {
+            pages: state.pages,
+            autoNavigation: state.autoNavigation,
+            spsEnabled: state.spsEnabled,
+            mobileBreakpoint: state.mobileBreakpoint,
+            onNavigate: (page) => {
+              if (!page || !page.id) return
+              rootVm.handleNavigationIntent(page.id, nav)
+            },
+            onOpenMobile: () => nav.setAttribute('data-mobile-menu', 'open'),
+            onCloseMobile: () => nav.setAttribute('data-mobile-menu', 'closed')
+          })
+        }
+      })
+
+      app.mount(mountTarget)
+      nav.__navigationMenuApp = app
+      nav.__navigationMenuState = state
+      nav.__navigationManualPages = manualPages
+    },
+
+    refreshNavigationMenuComponent (nav) {
+      if (!nav || !nav.__navigationMenuState) {
+        this.mountNavigationMenuComponent(nav)
+        return
+      }
+
+      let state = nav.__navigationMenuState
+      let autoNavigation = nav.getAttribute('data-auto-navigation') !== 'off'
+      let wasAutoNavigation = state.autoNavigation
+      state.autoNavigation = autoNavigation
+      state.spsEnabled = nav.getAttribute('data-sps-enabled') !== 'off'
+
+      if (autoNavigation) {
+        state.pages = this.getActivePages()
+      } else {
+        if (wasAutoNavigation) nav.__navigationManualPages = state.pages.slice()
+        if (!Array.isArray(nav.__navigationManualPages) || nav.__navigationManualPages.length === 0) {
+          nav.__navigationManualPages = this.getNavigationPagesFromNode(nav)
+        }
+        state.pages = nav.__navigationManualPages
+      }
+    },
+
+    unmountNavigationMenuComponent (nav) {
+      if (!nav || !nav.__navigationMenuApp) return
+      nav.__navigationMenuApp.unmount()
+      nav.__navigationMenuApp = null
+      nav.__navigationMenuState = null
+    },
+
+    getPageSections () {
+      return Array.from(document.querySelectorAll('#mess-main section.page'))
+    },
+
+    getTargetSectionById (targetId) {
+      if (!targetId) return null
+      return this.getPageSections().find((section) => section.id === targetId) || null
+    },
+
+    getDefaultNavigationMenu () {
+      return document.querySelector('nav[data-navigation-menu="true"]')
+    },
+
+    isSpsEnabled (navEl = null) {
+      let targetNav = navEl || this.getDefaultNavigationMenu()
+      if (!targetNav) return true
+      return targetNav.getAttribute('data-sps-enabled') !== 'off'
+    },
+
+    shouldUseInstantScroll () {
+      let isTouchDevice = typeof window !== 'undefined' && (
+        'ontouchstart' in window ||
+        (window.navigator && window.navigator.maxTouchPoints > 0)
+      )
+      let isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= 960
+      return isTouchDevice || isMobileViewport
+    },
+
+    getHeaderOffset () {
+      let header = document.querySelector('#mess-header')
+      if (!header || typeof header.getBoundingClientRect !== 'function') return 0
+      return Math.max(0, Math.round(header.getBoundingClientRect().height))
+    },
+
+    setDocumentTitleFromSection (sectionEl) {
+      if (!sectionEl) return
+      let pageName = sectionEl.getAttribute('data-page-name') || this.derivePageLabel(sectionEl)
+      if (pageName && typeof document !== 'undefined') document.title = pageName + ' | See a Mess?'
+    },
+
+    upsertMetaTag (selector, createAttrs, content) {
+      if (typeof document === 'undefined') return
+      let meta = document.querySelector(selector)
+      if (!meta) {
+        meta = document.createElement('meta')
+        Object.keys(createAttrs).forEach((key) => meta.setAttribute(key, createAttrs[key]))
+        document.head.appendChild(meta)
+      }
+      meta.setAttribute('content', content)
+    },
+
+    setDocumentMetaFromSection (sectionEl) {
+      if (!sectionEl) return
+      let pageName = sectionEl.getAttribute('data-page-name') || this.derivePageLabel(sectionEl)
+      let description = pageName + ' page in See a Mess?'
+      let pageTitle = pageName + ' | See a Mess?'
+      this.upsertMetaTag('meta[name="description"]', { name: 'description' }, description)
+      this.upsertMetaTag('meta[property="og:title"]', { property: 'og:title' }, pageTitle)
+      this.upsertMetaTag('meta[name="twitter:title"]', { name: 'twitter:title' }, pageTitle)
+    },
+
+    setNavigationHistory (targetId, mode = 'push') {
+      if (!targetId || typeof window === 'undefined' || !window.history) return
+      let targetHash = '#' + targetId
+      if (mode === 'replace') {
+        window.history.replaceState({ targetId }, '', targetHash)
+        return
+      }
+      if (window.location.hash === targetHash) {
+        window.history.pushState({ targetId }, '', targetHash)
+        return
+      }
+      window.location.hash = targetHash
+    },
+
+    handleNavigationIntent (targetId, navEl = null) {
+      if (!targetId) return
+      let targetHash = '#' + targetId
+      let isCurrentHash = window.location.hash === targetHash
+      this.setNavigationHistory(targetId, 'push')
+      if (isCurrentHash) this.navigateToSection(targetId, navEl)
+    },
+
+    navigateToSection (targetId, navEl = null) {
+      let section = this.getTargetSectionById(targetId)
+      if (!section) return
+
+      let sections = this.getPageSections()
+      let spsEnabled = this.isSpsEnabled(navEl)
+
+      if (spsEnabled) {
+        sections.forEach((item) => item.classList.remove('hidden'))
+        let headerOffset = this.getHeaderOffset()
+        let top = section.getBoundingClientRect().top + window.scrollY - headerOffset
+        window.scrollTo({
+          top,
+          behavior: this.shouldUseInstantScroll() ? 'auto' : 'smooth'
+        })
+      } else {
+        sections.forEach((item) => {
+          if (item === section) item.classList.remove('hidden')
+          else item.classList.add('hidden')
+        })
+      }
+
+      this.setDocumentTitleFromSection(section)
+      this.setDocumentMetaFromSection(section)
+    },
+
+    handleNavigationHashChange () {
+      let hash = window.location.hash || ''
+      let targetId = hash.replace(/^#/, '').trim()
+      if (!targetId) return
+      this.navigateToSection(targetId)
+    },
+
+    bindNavigationHandlers () {
+      this.navClickHandler = (event) => {
+        let clickedLink = event.target && event.target.closest
+          ? event.target.closest('nav[data-navigation-menu="true"] a[href^="#"]')
+          : null
+        if (!clickedLink) return
+
+        let navEl = clickedLink.closest('nav[data-navigation-menu="true"]')
+        let href = clickedLink.getAttribute('href') || ''
+        let targetId = href.replace(/^#/, '').trim()
+        if (!targetId) return
+
+        event.preventDefault()
+        this.handleNavigationIntent(targetId, navEl)
+      }
+
+      this.hashChangeHandler = () => this.handleNavigationHashChange()
+
+      document.addEventListener('click', this.navClickHandler)
+      window.addEventListener('hashchange', this.hashChangeHandler)
+    },
+
+    unbindNavigationHandlers () {
+      if (this.navClickHandler) document.removeEventListener('click', this.navClickHandler)
+      if (this.hashChangeHandler) window.removeEventListener('hashchange', this.hashChangeHandler)
+      this.navClickHandler = null
+      this.hashChangeHandler = null
+    },
+
+    applyInitialNavigationState () {
+      if (window.location.hash && window.location.hash !== '#') {
+        this.handleNavigationHashChange()
+        return
+      }
+      let firstPage = this.getPageSections()[0]
+      if (!firstPage) return
+      if (!this.isSpsEnabled()) {
+        this.navigateToSection(firstPage.id)
+      }
+    },
+
+    refreshNavigationMenus () {
+      let navs = document.querySelectorAll('nav[data-navigation-menu="true"]')
+      navs.forEach((nav) => {
+        this.refreshNavigationMenuComponent(nav)
+      })
+      this.handleNavigationHashChange()
+    },
+
+    getNavigationInsertTarget () {
+      let target = this.html_location
+      if (!target || typeof target.tagName !== 'string') {
+        return document.querySelector('#mess-main')
+      }
+      if (target.tagName === 'IMG') return target.parentNode
+      return target
+    },
+
+    normalizePageName (pageName) {
+      return (pageName || '').trim().replace(/\s+/g, ' ')
+    },
+
+    slugifyPageName (pageName) {
+      return this.normalizePageName(pageName)
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+    },
+
+    createUniquePageId (baseId) {
+      let fallbackBase = baseId || 'page'
+      let id = fallbackBase
+      let sequence = 2
+      while (this.getTargetSectionById(id)) {
+        id = fallbackBase + '-' + sequence
+        sequence += 1
+      }
+      return id
+    },
+
+    isReservedPageId (pageId) {
+      let reservedIds = ['home']
+      return reservedIds.includes(pageId)
+    },
+
+    confirmReservedPageId (pageId) {
+      return window.confirm('The page id "' + pageId + '" is reserved. Continue anyway?')
+    },
+
+    createPageElement (pageId, pageName) {
+      let markup = buildPageTemplate(pageId)
+      let pageTemplate = document.createElement('template')
+      pageTemplate.innerHTML = markup.trim()
+      let section = pageTemplate.content.firstElementChild
+      if (!section) return null
+      section.setAttribute('data-page-name', pageName)
+      return section
+    },
+
+    addPage () {
+      let rawPageName = window.prompt('Enter a page name (examples: About, Contact Us, Pricing).', 'New Page')
+      if (rawPageName === null) return
+
+      let pageName = this.normalizePageName(rawPageName)
+      if (!pageName) return
+
+      let baseId = this.slugifyPageName(pageName)
+      if (this.isReservedPageId(baseId) && !this.confirmReservedPageId(baseId)) return
+      let pageId = this.createUniquePageId(baseId || 'page')
+      let pageSection = this.createPageElement(pageId, pageName)
+      let mainTarget = document.querySelector('#mess-main')
+      if (!pageSection || !mainTarget) return
+
+      this.clearPulseEffect()
+      mainTarget.appendChild(pageSection)
+      this.page_location = 'main'
+      this.refreshNavigationMenus()
+      this.updateMess('main')
+    },
+
+    addNavigationMenu () {
+      this.clearPulseEffect()
+      let target = this.getNavigationInsertTarget()
+      if (!target) return
+
+      let nav = document.createElement('nav')
+      nav.setAttribute('data-navigation-menu', 'true')
+      nav.setAttribute('data-auto-navigation', 'on')
+      nav.setAttribute('data-sps-enabled', 'on')
+      nav.classList.add('navigation-menu', 'unstyled')
+
+      target.appendChild(nav)
+      this.mountNavigationMenuComponent(nav)
+      this.applyInitialNavigationState()
+      this.updateMess(this.page_location)
+    },
+
     addText (tagname) {
       this.clearPulseEffect()
       let addTarget = this.html_location
@@ -200,6 +564,7 @@ export default {
       newElement.appendChild(newElementText)
       if (addTarget.tagName === 'DIV') addTarget.append(newElement)
       else addTarget.parentElement.append(newElement)
+      this.refreshNavigationMenus()
       this.updateMess(this.page_location)
     },
 
@@ -208,6 +573,7 @@ export default {
       let addTarget = this.html_location
       let newElement = document.createElement(tagname)
       addTarget.append(newElement)
+      this.refreshNavigationMenus()
       this.updateMess(this.page_location)
     },
 
@@ -238,6 +604,7 @@ export default {
         default:
           divTarget.appendChild(newDiv)
       }
+      this.refreshNavigationMenus()
       this.updateMess(this.page_location)
     },
 
@@ -254,6 +621,7 @@ export default {
         if (targetTag === 'IMG') imgTarget.parentNode.appendChild(newImg)
         else imgTarget.appendChild(newImg)
       }
+      this.refreshNavigationMenus()
       this.updateMess()
     },
 
@@ -263,6 +631,7 @@ export default {
       removeTarget.remove()
       if (removeTarget.classList.contains('row')) this.updateRows(removeTargetParent)
       if (removeTarget.classList.contains('column')) this.updateColumns(removeTargetParent)
+      this.refreshNavigationMenus()
       this.updateMess(this.page_location)
     }
   },
@@ -279,6 +648,24 @@ export default {
       .$on('add-element', (tagname) => this.addEl(tagname))
       .$on('add-text', (tagname) => this.addText(tagname))
       .$on('add-image', (imgName) => this.addImg(imgName))
+      .$on('add-page', () => this.addPage())
+      .$on('add-navigation-menu', () => this.addNavigationMenu())
+      .$on('refresh-navigation-menus', () => {
+        this.refreshNavigationMenus()
+        this.updateMess(this.page_location)
+      })
+  },
+  mounted () {
+    this.bindNavigationHandlers()
+    nextTick(() => {
+      this.refreshNavigationMenus()
+      this.applyInitialNavigationState()
+    })
+  },
+  unmounted () {
+    this.unbindNavigationHandlers()
+    let navs = document.querySelectorAll('nav[data-navigation-menu="true"]')
+    navs.forEach((nav) => this.unmountNavigationMenuComponent(nav))
   }
 }
 

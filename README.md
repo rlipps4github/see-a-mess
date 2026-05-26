@@ -24,6 +24,12 @@ npm run build
 
 # preview the production build locally
 npm run preview
+
+# run tests once
+npm run test
+
+# run tests in watch mode
+npm run test:watch
 ```
 
 ## Stack
