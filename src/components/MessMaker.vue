@@ -317,6 +317,33 @@ export default {
       return document.querySelector('nav[data-navigation-menu="true"]')
     },
 
+    getMessRegionElement (messTarget = null) {
+      let target = messTarget || this.page_location
+      switch (target) {
+        case 'header':
+          return document.querySelector('#mess-header')
+        case 'main':
+          return document.querySelector('#mess-main')
+        case 'footer':
+          return document.querySelector('#mess-footer')
+        default:
+          return null
+      }
+    },
+
+    detachNavigationMenusInRegion (messTarget = null) {
+      let region = this.getMessRegionElement(messTarget)
+      if (!region) return
+
+      let navs = region.querySelectorAll('nav[data-navigation-menu="true"]')
+      navs.forEach((nav) => {
+        if (!nav.__navigationMenuApp) return
+        let markupSnapshot = nav.innerHTML
+        this.unmountNavigationMenuComponent(nav)
+        nav.innerHTML = markupSnapshot
+      })
+    },
+
     isSpsEnabled (navEl = null) {
       let targetNav = navEl || this.getDefaultNavigationMenu()
       if (!targetNav) return true
@@ -425,11 +452,29 @@ export default {
     handleNavigationHashChange () {
       let hash = window.location.hash || ''
       let targetId = hash.replace(/^#/, '').trim()
-      if (!targetId) return
-
       let contextualNavEl = null
       if (this.pendingNavigationTargetId === targetId && this.pendingNavigationNavEl) {
         contextualNavEl = this.pendingNavigationNavEl
+      }
+
+      if (!targetId) {
+        let firstPage = this.getPageSections()[0]
+        if (firstPage) {
+          this.navigateToSection(firstPage.id, contextualNavEl || this.getDefaultNavigationMenu())
+        }
+        this.pendingNavigationTargetId = null
+        this.pendingNavigationNavEl = null
+        return
+      }
+
+      if (!this.getTargetSectionById(targetId)) {
+        let firstPage = this.getPageSections()[0]
+        if (firstPage) {
+          this.navigateToSection(firstPage.id, contextualNavEl || this.getDefaultNavigationMenu())
+        }
+        this.pendingNavigationTargetId = null
+        this.pendingNavigationNavEl = null
+        return
       }
 
       this.navigateToSection(targetId, contextualNavEl)
@@ -571,8 +616,6 @@ export default {
       nav.classList.add('navigation-menu', 'unstyled')
 
       target.appendChild(nav)
-      this.mountNavigationMenuComponent(nav)
-      this.applyInitialNavigationState()
       this.updateMess(this.page_location)
       nextTick(() => {
         this.refreshNavigationMenus()
@@ -691,6 +734,7 @@ export default {
       .$on('add-page', () => this.addPage())
       .$on('add-navigation-menu', () => this.addNavigationMenu())
       .$on('refresh-navigation-menus', () => {
+        this.detachNavigationMenusInRegion(this.page_location)
         this.updateMess(this.page_location)
         nextTick(() => {
           this.refreshNavigationMenus()

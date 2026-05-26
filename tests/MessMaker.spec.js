@@ -122,6 +122,8 @@ describe('MessMaker.vue', () => {
     wrapper.vm.html_location = document.querySelector('#mess-header')
     wrapper.vm.page_location = 'header'
     wrapper.vm.addNavigationMenu()
+    await nextTick()
+    await nextTick()
 
     const nav = document.querySelector('nav[data-navigation-menu="true"]')
     expect(nav).toBeTruthy()
@@ -162,6 +164,27 @@ describe('MessMaker.vue', () => {
     const nav = document.querySelector('nav[data-navigation-menu="true"]')
     expect(nav.__navigationMenuApp).toBeTruthy()
     expect(nav.querySelector('.navigation-menu__link')).toBeTruthy()
+  })
+
+  it('detaches mounted nav apps before refresh-navigation-menus persistence rewrite', async () => {
+    const wrapper = makeWrapper('Demo')
+    await nextTick()
+
+    wrapper.vm.html_location = document.querySelector('#mess-header')
+    wrapper.vm.page_location = 'header'
+    wrapper.vm.addNavigationMenu()
+    await nextTick()
+    await nextTick()
+
+    const unmountSpy = vi.spyOn(wrapper.vm, 'unmountNavigationMenuComponent')
+    menuEventBus.$emit('refresh-navigation-menus')
+    await nextTick()
+    await nextTick()
+
+    expect(unmountSpy).toHaveBeenCalled()
+    const nav = document.querySelector('nav[data-navigation-menu="true"]')
+    expect(nav.__navigationMenuApp).toBeTruthy()
+    unmountSpy.mockRestore()
   })
 
   it('refreshes auto-navigation menus when pages change', async () => {
