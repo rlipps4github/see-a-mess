@@ -8,7 +8,21 @@
         <li v-for="(item,index) in homeList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
       </template>
       <template v-if="currentMenu === 'add'">
-        <li v-for="(item,index) in moduleList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
+        <li
+          v-for="(item,index) in moduleListPrimary"
+          :key="'primary-'+item+index"
+          @click="menuClick(item)"
+        >
+          {{ item }}
+        </li>
+        <li
+          v-for="(item,index) in moduleListSecondary"
+          :key="'secondary-'+item+index"
+          :class="['menu-secondary-row', { 'menu-secondary-row-start': index === 0 }]"
+          @click="menuClick(item)"
+        >
+          {{ item }}
+        </li>
       </template>
       <template v-if="currentMenu === 'primative'">
         <li v-for="(item,index) in primativeList" :key="item+index" @click="menuClick(item)">{{ item }}</li>
@@ -62,12 +76,15 @@ export default {
         'Open',
         'Save'
       ],
-      moduleList: [
+      moduleListPrimary: [
+        'Add Page',
         'Add Row',
         'Add Column',
         'Add Text',
-        'Add Image',
-        'Add Menu',
+        'Add Image'
+      ],
+      moduleListSecondary: [
+        'Add Navigation Menu',
         'Add Contact',
         'Add Primative'
       ],
@@ -113,6 +130,9 @@ export default {
         case 'Add Row':
           this.addDiv('row')
           break
+        case 'Add Page':
+          this.addPage()
+          break
         case 'Add Column':
           this.addDiv('column')
           break
@@ -121,6 +141,9 @@ export default {
           break
         case 'Add Image':
           this.setMenu('import-image')
+          break
+        case 'Add Navigation Menu':
+          this.addNavigationMenu()
           break
         case 'Add Primative':
           this.setMenu('primative')
@@ -202,6 +225,16 @@ export default {
 
     addText () {
       menuEventBus.$emit('add-text', this.currentPrimitive)
+      this.closeMenu()
+    },
+
+    addNavigationMenu () {
+      menuEventBus.$emit('add-navigation-menu')
+      this.closeMenu()
+    },
+
+    addPage () {
+      menuEventBus.$emit('add-page')
       this.closeMenu()
     },
 
@@ -287,6 +320,14 @@ export default {
     }
 
     @include randomize();
+  }
+
+  .menu-secondary-row {
+    margin-top: 0.2em;
+  }
+
+  .menu-secondary-row-start {
+    margin-top: 0.75em;
   }
 
   :deep(form) {

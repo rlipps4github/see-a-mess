@@ -53,9 +53,20 @@
 
       </ul>
 
-      <button @click.stop.prevent="setMenu('add')">Add Styles</button>
-      <button @click.stop.prevent="saveSelection">Save</button>
-      <button v-if=" status === 'clean' " @click.stop.prevent="closeEdit">Back</button>
+      <div class="action-row">
+        <button @click.stop.prevent="setMenu('add')">Add Styles</button>
+        <button @click.stop.prevent="saveSelection">Save</button>
+        <button v-if=" status === 'clean' " @click.stop.prevent="closeEdit">Back</button>
+      </div>
+
+      <edit-navigation
+        v-if="navigationTargetEl"
+        class="action-row action-row--navigation"
+        :auto-navigation="autoNavigation"
+        :sps-enabled="spsEnabled"
+        @update:autoNavigation="handleAutoNavigationUpdate"
+        @update:spsEnabled="handleSpsUpdate"
+      ></edit-navigation>
 
     </template>
 
@@ -80,6 +91,7 @@
 <script>
 
 import { menuEventBus } from '../main.js'
+import EditNavigation from './EditNavigation.vue'
 
 export default {
   name: 'Edit',
@@ -90,9 +102,15 @@ export default {
       computedStyles: {},
       currentOption: 'settings',
       currentEl: {},
+      navigationTargetEl: null,
+      autoNavigation: true,
+      spsEnabled: true,
       currentTag: '',
       currentStyle: ''
     }
+  },
+  components: {
+    EditNavigation
   },
   computed: {
     stylesList () {
@@ -105,6 +123,36 @@ export default {
     }
   },
   methods: {
+    findNavigationTarget (el) {
+      if (!el || typeof el.tagName !== 'string') return null
+      if (el.tagName === 'NAV' && el.getAttribute('data-navigation-menu') === 'true') return el
+      if (typeof el.closest === 'function') return el.closest('nav[data-navigation-menu="true"]')
+      return null
+    },
+
+    syncNavigationEditorState () {
+      let navTarget = this.findNavigationTarget(this.currentEl)
+      this.navigationTargetEl = navTarget
+      if (!navTarget) return
+      this.autoNavigation = navTarget.getAttribute('data-auto-navigation') !== 'off'
+      this.spsEnabled = navTarget.getAttribute('data-sps-enabled') !== 'off'
+    },
+
+    handleAutoNavigationUpdate (newVal) {
+      this.autoNavigation = newVal
+      if (!this.navigationTargetEl) return
+      this.navigationTargetEl.setAttribute('data-auto-navigation', newVal ? 'on' : 'off')
+      this.status = 'dirty'
+      menuEventBus.$emit('refresh-navigation-menus')
+    },
+
+    handleSpsUpdate (newVal) {
+      this.spsEnabled = newVal
+      if (!this.navigationTargetEl) return
+      this.navigationTargetEl.setAttribute('data-sps-enabled', newVal ? 'on' : 'off')
+      this.status = 'dirty'
+    },
+
     setter (atr, val) {
       this.currentEl.style[atr] = val
       let currentStyles = this.currentEl.getAttribute('style') || ''
@@ -243,10 +291,12 @@ export default {
       this.currentTag = this.currentEl.tagName
       this.styles = this.currentEl.getAttribute('style')
       this.lister(this.currentEl)
+      this.syncNavigationEditorState()
     }
   },
   created () {
     this.currentEl = this.$store.state.html_location
+    this.syncNavigationEditorState()
   }
 }
 </script>
@@ -391,6 +441,19 @@ select {
 
 textarea {
   min-height: 10vh;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-row--navigation {
+  margin-top: 6px;
 }
 
 </style>
